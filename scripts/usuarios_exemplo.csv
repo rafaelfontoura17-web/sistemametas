@@ -1,0 +1,5 @@
+nome,email,senha_temporaria,cargo,perfil,escopo_regional,escopo_area
+Fulano da Silva,fulano.silva@ambarenergia.com.br,TrocarNoPrimeiroAcesso!1,Coordenador,gestor,Norte,
+Ciclana Souza,ciclana.souza@ambarenergia.com.br,TrocarNoPrimeiroAcesso!2,Supervisora,gestor,Norte,Coordenação Norte
+Beltrano Costa,beltrano.costa@ambarenergia.com.br,TrocarNoPrimeiroAcesso!3,Analista,usuario,Norte,Coordenação Norte
+Administradora Sistema,admin@ambarenergia.com.br,TrocarNoPrimeiroAcesso!4,,administrador,,
