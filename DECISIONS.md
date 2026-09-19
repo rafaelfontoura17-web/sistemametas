@@ -490,3 +490,71 @@ Git via `.gitignore`, prática padrão).
 Supabase (Authentication → Add user), vínculo de perfil Administrador
 (escopo global, não precisa de linha em `user_access`) feito por mim
 direto no banco. Confirmado via `v_user_details`.
+
+## Revisão visual e de UX (pós-deploy)
+
+Depois do primeiro deploy real, você revisou a interface e apontou 5
+pontos onde o app novo (React) tinha se afastado do painel-metas original
+sem eu perceber durante a reconstrução. Resolvidos nesta etapa:
+
+31. **Cores de status corrigidas em todo o sistema.** Existia uma
+    inversão: eu tinha `parcial`→amarelo e `pendente`→azul; o padrão
+    correto (validado no painel original) é `parcial`→**azul**,
+    `pendente`→**amarelo**. Criei `src/lib/statusColors.ts` como única
+    fonte de verdade — Dashboard, Metas, Detalhe da Meta, Detalhe da Área
+    e a Legenda na sidebar agora importam dali, nenhum tem cor própria
+    solta. Isso evita a mesma inconsistência voltar a acontecer numa
+    tela nova no futuro.
+
+32. **Dashboard reconstruído**: colunas por Regional (Centro-Sul/Norte/
+    Rio) lado a lado, cada uma com os 3 quadrantes por hierarquia
+    (Coordenação/Supervisão/Demais áreas) com os tons suaves originais
+    (lavanda/pêssego/verde-claro — só decoração de hierarquia, sem
+    relação com status). Card com anel de progresso (`ProgressRing.tsx`,
+    SVG) e clicável, levando pro Detalhe da Área.
+
+33. **Nova tela: Detalhe da Área** (`/areas/:areaId`) — o que existia no
+    painel original e não tinha sido reconstruído: lista todas as metas
+    da área com nome, descrição, Real/Peso/Resultado, barra de progresso,
+    e a tabela de faixas com a faixa efetivamente atingida destacada em
+    verde (`isBandAchieved()` em `goalFormat.ts` — mesma lógica de
+    comparação do motor de cálculo, só pra fins de destaque visual, nunca
+    recalculando nada por conta própria).
+
+34. **Identidade visual**: acento trocado de verde pra azul (`#2563eb`) e
+    sidebar de azul-marinho (`#0f172a`, era verde-petróleo); logo da
+    Âmbar reconstruída em texto/CSS (`AmbarLogo.tsx`) — **não tenho o
+    arquivo de imagem original** neste projeto, então é uma reconstrução
+    aproximada; se você tiver o arquivo, é só trocar pelo `<img>`. Texto
+    de marca "Painel de Metas / Gestão executiva de performance" de volta
+    na sidebar. `PageHeader.tsx` novo padroniza o cabeçalho de toda tela
+    (eyebrow "ÂMBAR ENERGIA · PERFORMANCE 2026" + barra de destaque +
+    título), sem o botão "Importar planilha" (não existe mais no fluxo
+    novo — a carga é feita pelo script, não pela tela).
+
+35. **Legenda de status na sidebar**, usando a mesma fonte de cores do
+    item 31 — não é mais uma lista solta, se o mapeamento mudar de novo
+    um dia, muda nos dois lugares ao mesmo tempo.
+
+## Criar usuário direto pela tela + editar perfil/escopo
+
+36. **Edge Function `create-user`, implantada no projeto real** —
+    resolve o pedido de criar conta sem sair do navegador, mantendo a
+    `service_role key` só no servidor (nunca no bundle do frontend). A
+    função confere se quem está chamando é Admin (via `fn_is_admin`)
+    antes de fazer qualquer coisa, senão qualquer pessoa logada poderia
+    criar uma conta de Administrador pra si mesma. Reaproveita a mesma
+    lógica de provisionamento do `provision_users.py`, só que rodando no
+    servidor da função em vez da máquina de quem roda o script.
+
+37. **Edição de perfil/escopo de usuário já existente**, direto na tela
+    — isso nunca teve bloqueio de segurança nenhum (só criação de conta
+    depende da Admin API), só não tinha sido construído. Reescreve
+    `user_roles`/`user_access` do usuário — a RLS já garante que só Admin
+    consegue.
+
+**Não testado ainda de ponta a ponta pelo navegador** (só type-check,
+build, e as queries/RPCs subjacentes direto no banco) — vale você conferir
+visualmente depois do deploy, principalmente o fluxo de criar um usuário
+novo pela tela, já que a Edge Function nunca tinha sido exercitada de
+verdade.

@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import AreaDetail from './pages/AreaDetail'
 import Metas from './pages/Metas'
 import GoalDetail from './pages/GoalDetail'
 import Solicitacoes from './pages/Solicitacoes'
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={page(<Dashboard />)} />
+          <Route path="/areas/:areaId" element={page(<AreaDetail />)} />
           <Route path="/metas" element={page(<Metas />)} />
           <Route path="/metas/:goalId" element={page(<GoalDetail />)} />
           <Route path="/solicitacoes" element={page(<Solicitacoes />)} />

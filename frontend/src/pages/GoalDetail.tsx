@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { STATUS_STYLES, type GoalStatus } from '../lib/statusColors'
+import { MESES, formatReal, formatCriterio, type GoalRange } from '../lib/goalFormat'
 
 interface GoalDetail {
   goal_id: string
@@ -19,24 +21,7 @@ interface GoalDetail {
   real_value_pct: number | null
   attainment_percentage: number | null
   weighted_result: number | null
-  result_status: string | null
-}
-
-interface GoalRange {
-  attainment_percentage: number
-  target_value: number
-  target_month: number | null
-}
-
-const MESES = [
-  '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-]
-
-const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  critico: { label: 'Crítico', className: 'bg-red-100 text-red-700' },
-  parcial: { label: 'Parcial', className: 'bg-amber-100 text-amber-700' },
-  atingido: { label: 'Atingido', className: 'bg-emerald-100 text-emerald-700' },
+  result_status: GoalStatus | null
 }
 
 export default function GoalDetail() {
@@ -67,7 +52,7 @@ export default function GoalDetail() {
   if (errorMsg) return <p className="text-sm text-red-600">Não foi possível carregar a meta: {errorMsg}</p>
   if (!goal) return <p className="text-sm text-slate-400">Meta não encontrada (ou fora do seu escopo).</p>
 
-  const badge = goal.result_status ? STATUS_LABEL[goal.result_status] : null
+  const status: GoalStatus = goal.result_status ?? 'pendente'
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -80,11 +65,9 @@ export default function GoalDetail() {
               {goal.area_name} · {goal.regional_name} · peso {goal.weight.toFixed(0)}%
             </p>
           </div>
-          {badge && (
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${badge.className}`}>
-              {badge.label}
-            </span>
-          )}
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_STYLES[status].badgeClassName}`}>
+            {STATUS_STYLES[status].label}
+          </span>
         </div>
         {goal.indicator_description && (
           <p className="text-sm text-slate-500 mt-3">{goal.indicator_description}</p>
@@ -120,25 +103,6 @@ export default function GoalDetail() {
       )}
     </div>
   )
-}
-
-function formatCriterio(direction: string, unidade: string | null, band: GoalRange) {
-  const isPct = unidade === '%'
-  const val = isPct ? `${(band.target_value * 100).toFixed(0)}%` : `${band.target_value} ${unidade ?? ''}`
-  switch (direction) {
-    case 'maior_melhor':
-      return `≥ ${val}`
-    case 'menor_melhor':
-      return `≤ ${val}`
-    case 'binario':
-      return 'Concluído'
-    case 'cronologico':
-      return `até ${MESES[band.target_value]}`
-    case 'percentual_por_mes':
-      return `${(band.target_value * 100).toFixed(0)}% até ${MESES[band.target_month ?? 0]}`
-    default:
-      return val
-  }
 }
 
 function ResultadoLancado({ goal }: { goal: GoalDetail }) {
@@ -262,16 +226,6 @@ function ResultadoLancado({ goal }: { goal: GoalDetail }) {
       )}
     </div>
   )
-}
-
-function formatReal(goal: GoalDetail) {
-  if (goal.direction === 'binario') return goal.real_value === 1 ? 'Sim' : 'Não'
-  if (goal.direction === 'cronologico') return MESES[goal.real_value ?? 0]
-  if (goal.direction === 'percentual_por_mes') {
-    return `${((goal.real_value_pct ?? 0) * 100).toFixed(0)}% em ${MESES[goal.real_value ?? 0]}`
-  }
-  if (goal.unidade === '%') return `${((goal.real_value ?? 0) * 100).toFixed(1)}%`
-  return `${goal.real_value} ${goal.unidade ?? ''}`
 }
 
 function ApuracaoForm({ goal, onSaved }: { goal: GoalDetail; onSaved: () => void }) {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import PageHeader from '../components/PageHeader'
+import { STATUS_STYLES, STATUS_SHORT_LABEL, type GoalStatus } from '../lib/statusColors'
 
 interface GoalRow {
   goal_id: string
@@ -12,17 +14,11 @@ interface GoalRow {
   real_value: number | null
   real_value_pct: number | null
   attainment_percentage: number | null
-  result_status: 'pendente' | 'critico' | 'parcial' | 'atingido' | null
+  result_status: GoalStatus | null
 }
 
-const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  critico: { label: 'Crítico', className: 'bg-red-100 text-red-700' },
-  parcial: { label: 'Parcial', className: 'bg-amber-100 text-amber-700' },
-  atingido: { label: 'Atingido', className: 'bg-emerald-100 text-emerald-700' },
-}
-
-function statusOf(row: GoalRow) {
-  return row.result_status ?? null
+function statusOf(row: GoalRow): GoalStatus {
+  return row.result_status ?? 'pendente'
 }
 
 export default function Metas() {
@@ -72,10 +68,10 @@ export default function Metas() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-800">Metas</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{filtered.length} de {rows.length} metas</p>
-      </div>
+      <PageHeader
+        title="Metas"
+        actions={<span className="text-sm text-slate-400">{filtered.length} de {rows.length} metas</span>}
+      />
 
       <div className="flex flex-wrap gap-2">
         <select
@@ -116,7 +112,6 @@ export default function Metas() {
           <tbody>
             {filtered.map((r) => {
               const status = statusOf(r)
-              const badge = status ? STATUS_LABEL[status] : { label: 'Aguardando apuração', className: 'bg-blue-100 text-blue-700' }
               return (
                 <tr key={r.goal_id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-4 py-2.5">
@@ -131,8 +126,8 @@ export default function Metas() {
                     {r.attainment_percentage != null ? `${r.attainment_percentage.toFixed(0)}%` : '—'}
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
-                      {badge.label}
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[status].badgeClassName}`}>
+                      {STATUS_SHORT_LABEL[status]}
                     </span>
                   </td>
                 </tr>
