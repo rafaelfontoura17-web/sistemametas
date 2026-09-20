@@ -606,3 +606,28 @@ verdade.
 **Testado**: `tsc -b` e `npm run build` passam limpos. Não testado no
 navegador (login de verdade, fluxo de redefinição de senha de ponta a
 ponta, clique na logo) — depende do deploy real.
+
+## Bug crítico corrigido: auto-edição de usuário quebrava a própria permissão
+
+43. **Migration 14 — `admin_update_user()`, uma RPC atômica.** Você
+    reportou o erro `new row violates row-level security policy for
+    table "user_roles"` ao editar o próprio usuário. Causa raiz: a tela
+    fazia "apaga user_roles → insere de novo" em duas chamadas separadas
+    do navegador; no instante entre as duas, `fn_is_admin(auth.uid())`
+    já dava falso (a própria linha de Admin tinha acabado de ser
+    apagada), e a RLS bloqueava a reinserção. Só acontece quando alguém
+    edita o PRÓPRIO perfil — editar outra pessoa nunca teve esse
+    problema. Corrigido com uma função `security definer` que checa
+    "é Admin?" **uma vez só**, no início, e faz tudo internamente sem
+    voltar a passar pela RLS a cada instrução — mesmo padrão já usado em
+    `create_approval_request`/`approve_request`/`reject_request`.
+
+44. **Efeito colateral do bug**: sua conta ficou temporariamente **sem
+    nenhum perfil atribuído** (a etapa de apagar tinha rodado antes de
+    travar na de inserir). Restaurei o perfil de Administrador
+    manualmente assim que percebi, direto no banco.
+
+**Testado**: simulei exatamente o cenário que quebrou (você editando o
+próprio usuário — nome e perfil) direto no Postgres, autenticado como
+você. Funcionou de ponta a ponta: nome salvo, perfil de Administrador
+mantido durante toda a operação, sem erro.

@@ -173,43 +173,22 @@ function EditRow({
     setSubmitting(true)
     setError(null)
 
-    if (nome.trim() && nome.trim() !== (row.employee_name ?? '')) {
-      if (row.employee_id) {
-        const { error: nameErr } = await supabase.from('employees').update({ name: nome.trim() }).eq('id', row.employee_id)
-        if (nameErr) { setError(nameErr.message); setSubmitting(false); return }
-      } else {
-        // Usuário ainda não tinha nenhum employee vinculado (ex.: admin
-        // criado direto no painel do Supabase) — cria um agora.
-        const { data: newEmployee, error: createErr } = await supabase
-          .from('employees').insert({ name: nome.trim(), email: row.email }).select('id').single()
-        if (createErr) { setError(createErr.message); setSubmitting(false); return }
-        const { error: linkErr } = await supabase.from('users').update({ employee_id: newEmployee.id }).eq('id', row.user_id)
-        if (linkErr) { setError(linkErr.message); setSubmitting(false); return }
-      }
-    }
-
-    const { data: role, error: roleErr } = await supabase.from('roles').select('id').eq('code', perfil).single()
-    if (roleErr || !role) { setError('Perfil inválido.'); setSubmitting(false); return }
-
-    const { error: delRoleErr } = await supabase.from('user_roles').delete().eq('user_id', row.user_id)
-    if (delRoleErr) { setError(delRoleErr.message); setSubmitting(false); return }
-    const { error: insRoleErr } = await supabase.from('user_roles').insert({ user_id: row.user_id, role_id: role.id })
-    if (insRoleErr) { setError(insRoleErr.message); setSubmitting(false); return }
-
-    const { error: delAccessErr } = await supabase.from('user_access').delete().eq('user_id', row.user_id)
-    if (delAccessErr) { setError(delAccessErr.message); setSubmitting(false); return }
-
-    // Administrador sem regional selecionada = acesso Global, não precisa de linha em user_access.
-    if (!(perfil === 'administrador' && !regionalId)) {
-      const { error: insAccessErr } = await supabase.from('user_access').insert({
-        user_id: row.user_id,
-        regional_id: regionalId || null,
-        area_id: areaId || null,
-      })
-      if (insAccessErr) { setError(insAccessErr.message); setSubmitting(false); return }
-    }
+    // Uma chamada só, atômica, no banco — em vez de apagar e reinserir
+    // em passos separados daqui do navegador. Isso evita o caso em que
+    // um Admin editando o PRÓPRIO perfil perdia a permissão de Admin no
+    // meio do caminho (a linha antiga já tinha sido apagada quando a
+    // nova tentava ser inserida, e a RLS bloqueava por já não ver mais
+    // fn_is_admin()=true naquele instante).
+    const { error: rpcError } = await supabase.rpc('admin_update_user', {
+      p_user_id: row.user_id,
+      p_nome: nome.trim() || null,
+      p_perfil: perfil,
+      p_regional_id: regionalId || null,
+      p_area_id: areaId || null,
+    })
 
     setSubmitting(false)
+    if (rpcError) { setError(rpcError.message); return }
     onSaved()
   }
 
