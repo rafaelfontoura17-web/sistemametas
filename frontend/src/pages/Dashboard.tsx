@@ -103,7 +103,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className={`grid gap-5 items-start ${regionaisVisiveis.length === 1 ? 'grid-cols-1 max-w-md' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
+      <div className={`grid gap-5 items-start ${regionaisVisiveis.length === 1 ? 'grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
         {regionaisVisiveis.map((regionalName) => {
           const areasDaRegional = rows.filter((r) => r.regional_name === regionalName)
           return (
@@ -121,14 +121,15 @@ export default function Dashboard() {
                       <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
                         {style.label}
                       </p>
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         {areas.map((a) => {
                           const status = areaStatus(a)
                           return (
                             <button
                               key={a.area_id}
                               onClick={() => navigate(`/areas/${a.area_id}`)}
-                              className={`w-full text-left rounded-lg border p-3 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow ${style.bg} ${style.border}`}
+                              style={{ flex: '1 1 260px', maxWidth: '340px' }}
+                              className={`text-left rounded-lg border p-3 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow ${style.bg} ${style.border}`}
                             >
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-slate-800 truncate">{a.area_name}</p>

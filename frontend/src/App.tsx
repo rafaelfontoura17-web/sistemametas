@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import AreaDetail from './pages/AreaDetail'
 import Metas from './pages/Metas'
@@ -30,6 +31,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/redefinir-senha" element={<ResetPassword />} />
           <Route path="/" element={page(<Dashboard />)} />
           <Route path="/areas/:areaId" element={page(<AreaDetail />)} />
           <Route path="/metas" element={page(<Metas />)} />

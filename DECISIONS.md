@@ -558,3 +558,51 @@ build, e as queries/RPCs subjacentes direto no banco) — vale você conferir
 visualmente depois do deploy, principalmente o fluxo de criar um usuário
 novo pela tela, já que a Edge Function nunca tinha sido exercitada de
 verdade.
+
+## Segunda rodada de ajustes visuais (logo real, edição de nome, bug de layout, Login)
+
+38. **Cores extraídas do arquivo real da logo**, não mais chutadas: escaneei
+    os pixels do `Logo_Ambar_Energia_CMYK.jpg` e usei os tons dominantes
+    exatos — cinza-chumbo `#2e3636` (sidebar/texto de marca) e laranja
+    `#ff7300` (acento/botões). Substituem os tons de estoque usados antes.
+
+39. **Logo real** salva em `frontend/public/logo-ambar.jpg` — redimensionada
+    e comprimida (de 766KB pra 13KB, só o necessário pra um ícone de
+    sidebar) — usada na sidebar e no Login, como link clicável de volta
+    pro Dashboard (`AmbarLogo.tsx`).
+
+40. **Bug de reorganização dos cards do Dashboard corrigido** — o mesmo
+    problema que já tínhamos resolvido no painel-metas original: ao
+    filtrar uma única Regional, a coluna ficava travada numa largura
+    fixa estreita (cards empilhados verticalmente) em vez de ocupar a
+    largura toda e reorganizar os cards lado a lado. Corrigido do mesmo
+    jeito de antes: `flex-wrap` com largura mínima/máxima por card
+    (`flex: 1 1 260px; max-width: 340px`), não mais `space-y-2` com
+    `w-full`.
+
+41. **Edição de nome na tela de Usuários** — exigiu expor `employee_id`
+    em `v_user_details` (migration 13; precisou ser `DROP + CREATE`, não
+    `CREATE OR REPLACE`, porque Postgres não deixa inserir coluna no meio
+    de uma view existente). Usuários sem `employee` vinculado (como o
+    Administrador, criado direto no painel do Supabase, sem passar pelo
+    fluxo de provisionamento) agora ganham um registro `employees` criado
+    na hora, na primeira vez que alguém edita o nome dele.
+
+42. **Login reconstruído**: layout dividido (marca à esquerda em fundo
+    escuro, formulário à direita), logo real, campo de senha com
+    mostrar/ocultar, foco automático no e-mail, campos desabilitados
+    durante o envio, erro de "conta inativa" com destaque visual
+    diferente de erro de senha errada, e **fluxo completo de "esqueci
+    minha senha"** (usa `resetPasswordForEmail` do Supabase Auth) — com
+    uma tela nova, `/redefinir-senha`, que recebe o link do e-mail e deixa
+    a pessoa definir a nova senha.
+
+    **Pendência operacional, não travou nada mas precisa ser feita por
+    você**: a URL do site publicado (Vercel) + `/redefinir-senha` precisa
+    ser adicionada em Authentication → URL Configuration → Redirect URLs
+    no painel do Supabase — sem isso, o link do e-mail de redefinição
+    não redireciona de volta pro app.
+
+**Testado**: `tsc -b` e `npm run build` passam limpos. Não testado no
+navegador (login de verdade, fluxo de redefinição de senha de ponta a
+ponta, clique na logo) — depende do deploy real.

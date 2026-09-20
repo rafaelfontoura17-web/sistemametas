@@ -5,6 +5,7 @@ import PageHeader from '../components/PageHeader'
 
 interface UserRow {
   user_id: string
+  employee_id: string | null
   email: string
   status: 'ativo' | 'inativo'
   employee_name: string | null
@@ -159,6 +160,7 @@ function EditRow({
   onCancel: () => void
   onSaved: () => void
 }) {
+  const [nome, setNome] = useState(row.employee_name ?? '')
   const [perfil, setPerfil] = useState<(typeof PERFIS)[number]['value']>(
     (row.roles[0] as (typeof PERFIS)[number]['value']) ?? 'usuario'
   )
@@ -170,6 +172,21 @@ function EditRow({
   async function handleSave() {
     setSubmitting(true)
     setError(null)
+
+    if (nome.trim() && nome.trim() !== (row.employee_name ?? '')) {
+      if (row.employee_id) {
+        const { error: nameErr } = await supabase.from('employees').update({ name: nome.trim() }).eq('id', row.employee_id)
+        if (nameErr) { setError(nameErr.message); setSubmitting(false); return }
+      } else {
+        // Usuário ainda não tinha nenhum employee vinculado (ex.: admin
+        // criado direto no painel do Supabase) — cria um agora.
+        const { data: newEmployee, error: createErr } = await supabase
+          .from('employees').insert({ name: nome.trim(), email: row.email }).select('id').single()
+        if (createErr) { setError(createErr.message); setSubmitting(false); return }
+        const { error: linkErr } = await supabase.from('users').update({ employee_id: newEmployee.id }).eq('id', row.user_id)
+        if (linkErr) { setError(linkErr.message); setSubmitting(false); return }
+      }
+    }
 
     const { data: role, error: roleErr } = await supabase.from('roles').select('id').eq('code', perfil).single()
     if (roleErr || !role) { setError('Perfil inválido.'); setSubmitting(false); return }
@@ -198,7 +215,12 @@ function EditRow({
 
   return (
     <tr className="border-t border-slate-100 bg-slate-50">
-      <td className="px-4 py-2.5 text-slate-700">{row.employee_name ?? '—'}</td>
+      <td className="px-4 py-2.5">
+        <input
+          value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome"
+          className="text-sm border border-slate-300 rounded-lg px-2 py-1 w-full"
+        />
+      </td>
       <td className="px-4 py-2.5 text-slate-500">{row.email}</td>
       <td className="px-4 py-2.5">
         <select value={perfil} onChange={(e) => setPerfil(e.target.value as typeof perfil)} className="text-sm border border-slate-300 rounded-lg px-2 py-1">

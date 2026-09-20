@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        'ambar-accent': '#2563eb',
-        'ambar-dark': '#0f172a',
+        'ambar-accent': '#ff7300',
+        'ambar-dark': '#2e3636',
       },
     },
   },
