@@ -231,41 +231,58 @@ function EditRow({
 
   return (
     <tr className="border-t border-slate-100 bg-slate-50">
-      <td className="px-4 py-2.5" colSpan={7}>
-        <div className="space-y-3 py-2">
-          <div className="flex flex-wrap gap-2 items-center">
-            <input
-              value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome"
-              className="text-sm border border-slate-300 rounded-lg px-2 py-1 flex-1 min-w-[160px]"
-            />
-            <span className="text-sm text-slate-500">{row.email}</span>
-            <select value={perfil} onChange={(e) => setPerfil(e.target.value as typeof perfil)} className="text-sm border border-slate-300 rounded-lg px-2 py-1">
-              {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
-            <select
-              value={regionalId}
-              onChange={(e) => { setRegionalId(e.target.value); setEditAreaIds([]) }}
-              className="text-sm border border-slate-300 rounded-lg px-2 py-1"
-            >
-              <option value="">{perfil === 'administrador' ? 'Global' : 'Selecione a Regional'}</option>
-              {regionais.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+      <td className="px-4 py-3" colSpan={7}>
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium text-slate-700 mb-3">Editando {row.email}</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] text-slate-400 uppercase mb-1">Nome</label>
+              <input
+                value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome"
+                className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] text-slate-400 uppercase mb-1">Perfil</label>
+              <select
+                value={perfil} onChange={(e) => setPerfil(e.target.value as typeof perfil)}
+                className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 w-full"
+              >
+                {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] text-slate-400 uppercase mb-1">
+                {perfil === 'administrador' ? 'Escopo' : 'Regional (visualização)'}
+              </label>
+              <select
+                value={regionalId}
+                onChange={(e) => { setRegionalId(e.target.value); setEditAreaIds([]) }}
+                className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 w-full"
+              >
+                <option value="">{perfil === 'administrador' ? 'Global' : 'Selecione a Regional'}</option>
+                {regionais.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
           </div>
 
           {perfil === 'usuario' && regionalId && (
-            <div>
-              <p className="text-[11px] text-slate-400 uppercase mb-1.5">Áreas que pode editar (lançar/solicitar resultado)</p>
+            <div className="mt-3">
+              <label className="block text-[11px] text-slate-400 uppercase mb-1.5">
+                Áreas que pode editar (lançar/solicitar resultado)
+              </label>
               <EditAreasCheckboxes regionalId={regionalId} areaRegionals={areaRegionals} selected={editAreaIds} onChange={setEditAreaIds} />
             </div>
           )}
 
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
 
-          <div className="flex gap-2">
-            <button onClick={handleSave} disabled={submitting} className="text-xs rounded-lg bg-ambar-accent text-white px-2.5 py-1 disabled:opacity-60">
+          <div className="flex gap-2 mt-4">
+            <button onClick={handleSave} disabled={submitting} className="text-sm rounded-lg bg-ambar-accent text-white font-medium px-4 py-1.5 disabled:opacity-60">
               Salvar
             </button>
-            <button onClick={onCancel} className="text-xs text-slate-500 px-2">Cancelar</button>
+            <button onClick={onCancel} className="text-sm text-slate-500 px-2">Cancelar</button>
           </div>
         </div>
       </td>
