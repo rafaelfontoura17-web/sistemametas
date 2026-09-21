@@ -7,7 +7,7 @@ import StatusLegend from './StatusLegend'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard' },
-  { to: '/metas', label: 'Metas' },
+  { to: '/metas', label: 'Metas e Apuração' },
   { to: '/solicitacoes', label: 'Solicitações' },
   { to: '/aprovacoes', label: 'Aprovações' },
   { to: '/notificacoes', label: 'Notificações' },

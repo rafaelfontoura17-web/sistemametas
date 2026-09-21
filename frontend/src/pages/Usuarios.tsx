@@ -12,10 +12,12 @@ interface UserRow {
   cargo: string | null
   roles: string[]
   escopos: string[]
+  view_regional_id: string | null
+  edit_areas: { area_id: string; area_name: string }[]
 }
 
 interface Regional { id: string; name: string }
-interface Area { id: string; name: string }
+interface AreaRegional { area_id: string; regional_id: string; area_name: string }
 
 const PERFIS = [
   { value: 'administrador', label: 'Administrador' },
@@ -27,7 +29,7 @@ export default function Usuarios() {
   const { isAdmin } = useAuth()
   const [rows, setRows] = useState<UserRow[]>([])
   const [regionais, setRegionais] = useState<Regional[]>([])
-  const [areas, setAreas] = useState<Area[]>([])
+  const [areaRegionals, setAreaRegionals] = useState<AreaRegional[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -36,15 +38,15 @@ export default function Usuarios() {
 
   async function load() {
     setLoading(true)
-    const [{ data, error }, { data: r }, { data: a }] = await Promise.all([
+    const [{ data, error }, { data: r }, { data: ar }] = await Promise.all([
       supabase.from('v_user_details').select('*').order('email'),
       supabase.from('regionals').select('id, name').order('name'),
-      supabase.from('areas').select('id, name').order('name'),
+      supabase.from('area_regionals').select('area_id, regional_id, areas(name)').eq('active', true),
     ])
     if (error) setErrorMsg(error.message)
     else setRows((data ?? []) as UserRow[])
     setRegionais((r ?? []) as Regional[])
-    setAreas((a ?? []) as Area[])
+    setAreaRegionals(((ar ?? []) as any[]).map((row) => ({ area_id: row.area_id, regional_id: row.regional_id, area_name: row.areas?.name ?? '?' })))
     setLoading(false)
   }
 
@@ -80,10 +82,16 @@ export default function Usuarios() {
         }
       />
 
+      <p className="text-xs text-slate-400">
+        Criação de novas contas é feita pelo Administrador aqui mesmo (por segurança, a chave necessária
+        fica só no servidor, nunca no navegador). Perfil Usuário sempre vê a Regional inteira — a edição
+        é restrita à lista de Áreas escolhida abaixo.
+      </p>
+
       {showNewForm && (
         <NovoUsuarioForm
           regionais={regionais}
-          areas={areas}
+          areaRegionals={areaRegionals}
           onDone={() => { setShowNewForm(false); load() }}
         />
       )}
@@ -95,7 +103,8 @@ export default function Usuarios() {
               <th className="text-left font-medium px-4 py-2.5">Nome</th>
               <th className="text-left font-medium px-4 py-2.5">E-mail</th>
               <th className="text-left font-medium px-4 py-2.5">Perfil</th>
-              <th className="text-left font-medium px-4 py-2.5">Escopo</th>
+              <th className="text-left font-medium px-4 py-2.5">Vê</th>
+              <th className="text-left font-medium px-4 py-2.5">Edita</th>
               <th className="text-left font-medium px-4 py-2.5">Status</th>
               {isAdmin && <th className="px-4 py-2.5" />}
             </tr>
@@ -107,7 +116,7 @@ export default function Usuarios() {
                   key={r.user_id}
                   row={r}
                   regionais={regionais}
-                  areas={areas}
+                  areaRegionals={areaRegionals}
                   onCancel={() => setEditingId(null)}
                   onSaved={() => { setEditingId(null); load() }}
                 />
@@ -117,6 +126,9 @@ export default function Usuarios() {
                   <td className="px-4 py-2.5 text-slate-500">{r.email}</td>
                   <td className="px-4 py-2.5 text-slate-600">{r.roles.join(', ') || '—'}</td>
                   <td className="px-4 py-2.5 text-slate-500">{r.escopos.join(', ') || '—'}</td>
+                  <td className="px-4 py-2.5 text-slate-500">
+                    {r.edit_areas.length > 0 ? r.edit_areas.map((a) => a.area_name).join(', ') : '—'}
+                  </td>
                   <td className="px-4 py-2.5">
                     <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                       r.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
@@ -151,12 +163,42 @@ export default function Usuarios() {
   )
 }
 
+function EditAreasCheckboxes({
+  regionalId, areaRegionals, selected, onChange,
+}: {
+  regionalId: string
+  areaRegionals: AreaRegional[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const options = areaRegionals.filter((ar) => ar.regional_id === regionalId)
+  if (options.length === 0) {
+    return <p className="text-xs text-slate-400">Nenhuma Área cadastrada nessa Regional ainda.</p>
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => {
+        const checked = selected.includes(opt.area_id)
+        return (
+          <label key={opt.area_id} className={`text-xs px-2.5 py-1 rounded-full border cursor-pointer ${checked ? 'bg-ambar-accent text-white border-ambar-accent' : 'border-slate-300 text-slate-600'}`}>
+            <input
+              type="checkbox" className="hidden" checked={checked}
+              onChange={() => onChange(checked ? selected.filter((id) => id !== opt.area_id) : [...selected, opt.area_id])}
+            />
+            {opt.area_name}
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
 function EditRow({
-  row, regionais, areas, onCancel, onSaved,
+  row, regionais, areaRegionals, onCancel, onSaved,
 }: {
   row: UserRow
   regionais: Regional[]
-  areas: Area[]
+  areaRegionals: AreaRegional[]
   onCancel: () => void
   onSaved: () => void
 }) {
@@ -164,8 +206,8 @@ function EditRow({
   const [perfil, setPerfil] = useState<(typeof PERFIS)[number]['value']>(
     (row.roles[0] as (typeof PERFIS)[number]['value']) ?? 'usuario'
   )
-  const [regionalId, setRegionalId] = useState('')
-  const [areaId, setAreaId] = useState('')
+  const [regionalId, setRegionalId] = useState(row.view_regional_id ?? '')
+  const [editAreaIds, setEditAreaIds] = useState<string[]>(row.edit_areas.map((a) => a.area_id))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -173,18 +215,13 @@ function EditRow({
     setSubmitting(true)
     setError(null)
 
-    // Uma chamada só, atômica, no banco — em vez de apagar e reinserir
-    // em passos separados daqui do navegador. Isso evita o caso em que
-    // um Admin editando o PRÓPRIO perfil perdia a permissão de Admin no
-    // meio do caminho (a linha antiga já tinha sido apagada quando a
-    // nova tentava ser inserida, e a RLS bloqueava por já não ver mais
-    // fn_is_admin()=true naquele instante).
     const { error: rpcError } = await supabase.rpc('admin_update_user', {
       p_user_id: row.user_id,
       p_nome: nome.trim() || null,
       p_perfil: perfil,
       p_regional_id: regionalId || null,
-      p_area_id: areaId || null,
+      p_area_id: null,
+      p_edit_area_ids: perfil === 'usuario' ? editAreaIds : null,
     })
 
     setSubmitting(false)
@@ -194,47 +231,53 @@ function EditRow({
 
   return (
     <tr className="border-t border-slate-100 bg-slate-50">
-      <td className="px-4 py-2.5">
-        <input
-          value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome"
-          className="text-sm border border-slate-300 rounded-lg px-2 py-1 w-full"
-        />
-      </td>
-      <td className="px-4 py-2.5 text-slate-500">{row.email}</td>
-      <td className="px-4 py-2.5">
-        <select value={perfil} onChange={(e) => setPerfil(e.target.value as typeof perfil)} className="text-sm border border-slate-300 rounded-lg px-2 py-1">
-          {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </select>
-      </td>
-      <td className="px-4 py-2.5">
-        <div className="flex gap-1.5">
-          <select value={regionalId} onChange={(e) => { setRegionalId(e.target.value); setAreaId('') }} className="text-sm border border-slate-300 rounded-lg px-2 py-1">
-            <option value="">{perfil === 'administrador' ? 'Global' : 'Selecione a Regional'}</option>
-            {regionais.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <select value={areaId} onChange={(e) => setAreaId(e.target.value)} disabled={!regionalId} className="text-sm border border-slate-300 rounded-lg px-2 py-1 disabled:opacity-50">
-            <option value="">Regional inteira</option>
-            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+      <td className="px-4 py-2.5" colSpan={7}>
+        <div className="space-y-3 py-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome"
+              className="text-sm border border-slate-300 rounded-lg px-2 py-1 flex-1 min-w-[160px]"
+            />
+            <span className="text-sm text-slate-500">{row.email}</span>
+            <select value={perfil} onChange={(e) => setPerfil(e.target.value as typeof perfil)} className="text-sm border border-slate-300 rounded-lg px-2 py-1">
+              {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+            <select
+              value={regionalId}
+              onChange={(e) => { setRegionalId(e.target.value); setEditAreaIds([]) }}
+              className="text-sm border border-slate-300 rounded-lg px-2 py-1"
+            >
+              <option value="">{perfil === 'administrador' ? 'Global' : 'Selecione a Regional'}</option>
+              {regionais.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+
+          {perfil === 'usuario' && regionalId && (
+            <div>
+              <p className="text-[11px] text-slate-400 uppercase mb-1.5">Áreas que pode editar (lançar/solicitar resultado)</p>
+              <EditAreasCheckboxes regionalId={regionalId} areaRegionals={areaRegionals} selected={editAreaIds} onChange={setEditAreaIds} />
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={submitting} className="text-xs rounded-lg bg-ambar-accent text-white px-2.5 py-1 disabled:opacity-60">
+              Salvar
+            </button>
+            <button onClick={onCancel} className="text-xs text-slate-500 px-2">Cancelar</button>
+          </div>
         </div>
-        {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
-      </td>
-      <td className="px-4 py-2.5 text-slate-400 text-xs">{row.status}</td>
-      <td className="px-4 py-2.5 text-right space-x-2 whitespace-nowrap">
-        <button onClick={handleSave} disabled={submitting} className="text-xs rounded-lg bg-ambar-accent text-white px-2.5 py-1 disabled:opacity-60">
-          Salvar
-        </button>
-        <button onClick={onCancel} className="text-xs text-slate-500 px-2">Cancelar</button>
       </td>
     </tr>
   )
 }
 
 function NovoUsuarioForm({
-  regionais, areas, onDone,
+  regionais, areaRegionals, onDone,
 }: {
   regionais: Regional[]
-  areas: Area[]
+  areaRegionals: AreaRegional[]
   onDone: () => void
 }) {
   const [nome, setNome] = useState('')
@@ -243,7 +286,7 @@ function NovoUsuarioForm({
   const [cargo, setCargo] = useState('')
   const [perfil, setPerfil] = useState<(typeof PERFIS)[number]['value']>('usuario')
   const [regionalId, setRegionalId] = useState('')
-  const [areaId, setAreaId] = useState('')
+  const [editAreaIds, setEditAreaIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -258,6 +301,10 @@ function NovoUsuarioForm({
       setError('A senha precisa ter pelo menos 6 caracteres.')
       return
     }
+    if (perfil === 'usuario' && !regionalId) {
+      setError('Usuário precisa de uma Regional de visualização.')
+      return
+    }
 
     setSubmitting(true)
     const { data, error: fnError } = await supabase.functions.invoke('create-user', {
@@ -268,7 +315,8 @@ function NovoUsuarioForm({
         cargo: cargo.trim() || null,
         perfil,
         regionalId: regionalId || null,
-        areaId: areaId || null,
+        areaId: null,
+        editAreaIds: perfil === 'usuario' ? editAreaIds : null,
       },
     })
     setSubmitting(false)
@@ -289,19 +337,27 @@ function NovoUsuarioForm({
         <input type="password" placeholder="Senha temporária (mín. 6 caracteres)" value={senha} onChange={(e) => setSenha(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
         <input placeholder="Cargo (opcional)" value={cargo} onChange={(e) => setCargo(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <select value={perfil} onChange={(e) => setPerfil(e.target.value as typeof perfil)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+      <div className="grid grid-cols-2 gap-3">
+        <select value={perfil} onChange={(e) => { setPerfil(e.target.value as typeof perfil); setEditAreaIds([]) }} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
           {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
-        <select value={regionalId} onChange={(e) => { setRegionalId(e.target.value); setAreaId('') }} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+        <select
+          value={regionalId}
+          onChange={(e) => { setRegionalId(e.target.value); setEditAreaIds([]) }}
+          className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
+        >
           <option value="">{perfil === 'administrador' ? 'Global' : 'Selecione a Regional'}</option>
           {regionais.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
-        <select value={areaId} onChange={(e) => setAreaId(e.target.value)} disabled={!regionalId} className="border border-slate-300 rounded-lg px-3 py-2 text-sm disabled:opacity-50">
-          <option value="">Regional inteira</option>
-          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
       </div>
+
+      {perfil === 'usuario' && regionalId && (
+        <div>
+          <p className="text-[11px] text-slate-400 uppercase mb-1.5">Áreas que pode editar (lançar/solicitar resultado)</p>
+          <EditAreasCheckboxes regionalId={regionalId} areaRegionals={areaRegionals} selected={editAreaIds} onChange={setEditAreaIds} />
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button type="submit" disabled={submitting} className="text-sm rounded-lg bg-ambar-accent text-white font-medium px-4 py-2 hover:bg-ambar-dark disabled:opacity-60">
         {submitting ? 'Criando…' : 'Criar usuário'}

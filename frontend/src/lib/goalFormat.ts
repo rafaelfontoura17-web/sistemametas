@@ -16,6 +16,32 @@ export interface GoalLike {
   real_value_pct: number | null
 }
 
+export interface ApprovalItems {
+  real_value?: { previous: string | null; requested: string }
+  real_value_pct?: { previous: string | null; requested: string }
+  weight?: { previous: string | null; requested: string }
+}
+
+/** Formata o valor de um item de solicitação (texto bruto, como vem de
+ * approval_request_items) — não confundir com formatReal, que espera o
+ * shape numérico de v_goal_details. Usado nas telas de Aprovações e
+ * Solicitações, onde os valores chegam como texto dentro de "items". */
+export function formatApprovalValue(
+  direction: string,
+  unidade: string | null,
+  real: string | null | undefined,
+  pct: string | null | undefined
+): string {
+  if (real == null && pct == null) return '—'
+  if (direction === 'binario') return real === '1' ? 'Sim' : 'Não'
+  if (direction === 'cronologico') return MESES[Number(real)] ?? '—'
+  if (direction === 'percentual_por_mes') {
+    return `${pct != null ? (Number(pct) * 100).toFixed(0) : '?'}% em ${MESES[Number(real)] ?? '?'}`
+  }
+  if (unidade === '%') return `${(Number(real) * 100).toFixed(1)}%`
+  return `${real} ${unidade ?? ''}`
+}
+
 export function formatReal(goal: GoalLike): string {
   if (goal.real_value == null && goal.real_value_pct == null) return '—'
   if (goal.direction === 'binario') return goal.real_value === 1 ? 'Sim' : 'Não'

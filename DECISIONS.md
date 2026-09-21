@@ -631,3 +631,90 @@ ponta, clique na logo) — depende do deploy real.
 próprio usuário — nome e perfil) direto no Postgres, autenticado como
 você. Funcionou de ponta a ponta: nome salvo, perfil de Administrador
 mantido durante toda a operação, sem erro.
+
+## Terceira rodada de decisões de negócio — escopo de edição e fluxo de aprovação reescrito
+
+Definidas em conversa extensa, ponto a ponto, antes de qualquer execução.
+
+### Ponto 1 — visualização separada de edição (só perfil Usuário)
+
+45. **Nova tabela `user_edit_access`** (migration 15): usuário tem
+    visualização (`user_access`, como já existia) separada de edição —
+    uma linha por Área que ele pode lançar/solicitar resultado. Trigger
+    (`fn_check_edit_access_area`) garante que a área de edição só pode
+    ser de dentro da MESMA Regional que ele já vê — nunca de outra.
+46. **Decisão de negócio (reunião dos coordenadores regionais)**: Usuário
+    **sempre** vê a Regional inteira — não existe mais "vê só uma Área".
+    `admin_update_user` e a Edge Function `create-user` forçam isso
+    (ignoram qualquer área de visualização isolada pra esse perfil).
+47. Gestor e Administrador não mudam — visualização = edição, como
+    sempre foi.
+
+### Ponto 2 — só Administrador age direto
+
+48. **`submit_goal_result()`** (migration 15) — nova função única pra
+    lançar OU corrigir resultado, pra qualquer perfil. Decide sozinha:
+    - **Administrador**: aplica e auto-aprova na hora (única situação em
+      que autoaprovação é permitida — decisão de negócio explícita, só
+      aqui). Fica registrado em auditoria como se fosse aprovado por
+      outra pessoa, só que instantâneo.
+    - **Gestor**: sempre fica pendente agora — antes agia direto no
+      primeiro lançamento; essa mudança foi decidida nesta rodada.
+    - **Usuário**: sempre fica pendente, e só pode solicitar se a Área da
+      meta estiver na lista de `user_edit_access` dele.
+49. **`apply_approval_effect()`** — a efetivação de cada tipo de
+    solicitação (que antes só existia dentro de `approve_request`) virou
+    uma função própria, reaproveitada tanto por `approve_request` quanto
+    pela auto-aprovação do Admin em `submit_goal_result` — evita duplicar
+    o "case" de tipos em dois lugares. Ganhou também o ramo de **primeiro
+    lançamento** (antes só existia correção de um valor já apurado).
+50. **Removida a policy de INSERT direto em `goal_results`** — não existe
+    mais nenhum caminho de escrita direta na tabela; tudo passa por
+    `submit_goal_result` ou pela efetivação de uma aprovação.
+51. **Limitação conhecida, não resolvida nesta rodada**: se houver duas
+    solicitações pendentes pra mesma meta ao mesmo tempo (ex.: alguém
+    solicita de novo antes da primeira ser decidida) e a mais recente for
+    aprovada primeiro, aprovar a mais antiga depois pode sobrescrever o
+    valor já aplicado. Não é um cenário que surgiu na conversa; registrado
+    aqui como algo a revisitar se passar a acontecer na prática (ex.:
+    bloquear uma segunda solicitação pendente pra mesma meta).
+
+### Pontos 3 e 4 — Aprovações e Solicitações reconstruídas
+
+52. **View `v_approval_details`** (migration 16) — uma linha por
+    solicitação já com nome/cargo de quem pediu e de quem aprovou/
+    reprovou, valores antes→depois (`items`, jsonb), e todo o contexto
+    (meta/área/regional/ciclo) — usada pelas duas telas.
+53. **`ApprovalCard.tsx`** — componente compartilhado que mostra cada tipo
+    de solicitação no formato certo (resultado tem Real antes→depois;
+    meta tem peso antes→depois; reabertura tem área/regional/ciclo) —
+    evita duplicar essa lógica de formatação entre as duas telas.
+54. **Aprovação em lote**: `batch_approve_requests()` (migration 16) —
+    "aprova tudo, avisa no final quais falharam" (decisão de negócio: nunca
+    trava o lote inteiro por causa de uma falha isolada). A tela restringe
+    a seleção a um único `request_type` por vez.
+55. **Filtro por Regional** em ambas as telas, igual ao Dashboard, sempre
+    abrindo em "Todas as regionais".
+
+### Ponto 5 — tela de Metas
+
+56. Renomeada pra **"Metas e Apuração"** (tela + item do menu). Filtro
+    por Área adicionado, dependente do filtro de Regional já selecionado.
+
+### Testes realizados
+
+Migrations 15-17 testadas localmente (Postgres do zero) cobrindo: Usuário
+autorizado/não-autorizado a editar uma Área; Gestor e Admin submetendo
+resultado (pendente vs. auto-aprovado); `v_approval_details` e
+`batch_approve_requests`. Depois, migrations aplicadas no projeto real e
+o pipeline inteiro (Gestor submete 2 pendências → Admin aprova em lote →
+resultados calculados) testado **contra o banco de produção**, dentro de
+uma transação com `ROLLBACK` no final — confirmado funcionando (100%/
+atingido e 90%/parcial, exatamente como esperado) sem persistir nenhum
+dado de teste.
+
+Frontend: `tsc -b` e `npm run build` passam limpos. Não testado no
+navegador ainda — recomendo testar principalmente: Usuário sem nenhuma
+área de edição tentando lançar (deve ser bloqueado com mensagem clara),
+aprovação em lote pela tela, e o formulário de "Novo usuário" com áreas
+de edição.

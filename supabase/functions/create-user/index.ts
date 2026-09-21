@@ -19,7 +19,8 @@ interface CreateUserPayload {
   cargo?: string | null
   perfil: 'administrador' | 'gestor' | 'usuario'
   regionalId?: string | null // null = Global (só válido pra perfil 'administrador')
-  areaId?: string | null // null = Regional inteira
+  areaId?: string | null // null = Regional inteira (ignorado se perfil='usuario', ver abaixo)
+  editAreaIds?: string[] | null // só usado quando perfil='usuario' — escopo de EDIÇÃO
 }
 
 Deno.serve(async (req: Request) => {
@@ -66,6 +67,13 @@ Deno.serve(async (req: Request) => {
     if (payload.areaId && !payload.regionalId) {
       return json({ error: 'areaId não faz sentido sem regionalId.' }, 400, corsHeaders)
     }
+    if (payload.perfil === 'usuario' && !payload.regionalId) {
+      return json({ error: 'Usuário precisa de uma Regional de visualização definida.' }, 400, corsHeaders)
+    }
+    // Usuário sempre vê a Regional inteira — decisão de negócio (ver
+    // DECISIONS.md); nunca fica restrito a uma Área isolada, mesmo que
+    // alguém tente mandar areaId por engano.
+    const effectiveAreaId = payload.perfil === 'usuario' ? null : (payload.areaId ?? null)
 
     // 1. Cria a conta no Auth.
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
@@ -87,7 +95,7 @@ Deno.serve(async (req: Request) => {
           name: payload.nome,
           email: payload.email,
           cargo: payload.cargo ?? null,
-          area_id: payload.areaId ?? null,
+          area_id: effectiveAreaId,
           regional_id: payload.regionalId ?? null,
         })
         .select('id')
@@ -118,9 +126,20 @@ Deno.serve(async (req: Request) => {
         const { error: accessError } = await adminClient.from('user_access').insert({
           user_id: newUserId,
           regional_id: payload.regionalId ?? null,
-          area_id: payload.areaId ?? null,
+          area_id: effectiveAreaId,
         })
         if (accessError) throw accessError
+      }
+
+      // Escopo de EDIÇÃO — só existe pra perfil usuario, uma linha por
+      // Área marcada. O trigger no banco já garante que cada área
+      // pertence à mesma Regional de visualização; não precisa validar
+      // de novo aqui.
+      if (payload.perfil === 'usuario' && payload.editAreaIds && payload.editAreaIds.length > 0) {
+        const { error: editAccessError } = await adminClient.from('user_edit_access').insert(
+          payload.editAreaIds.map((areaId) => ({ user_id: newUserId, area_id: areaId }))
+        )
+        if (editAccessError) throw editAccessError
       }
     } catch (provisionError) {
       return json(

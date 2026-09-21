@@ -26,6 +26,7 @@ export default function Metas() {
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [regional, setRegional] = useState<string | null>(null)
+  const [area, setArea] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
 
   useEffect(() => {
@@ -54,14 +55,26 @@ export default function Metas() {
     [rows]
   )
 
+  // Área depende da Regional selecionada — só mostra o que existe ali.
+  const areas = useMemo(() => {
+    const base = regional ? rows.filter((r) => r.regional_name === regional) : rows
+    return Array.from(new Set(base.map((r) => r.area_name))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [rows, regional])
+
+  function handleRegionalChange(value: string | null) {
+    setRegional(value)
+    setArea(null) // volta a mostrar todas as áreas ao trocar de regional
+  }
+
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       if (regional && r.regional_name !== regional) return false
+      if (area && r.area_name !== area) return false
       if (statusFilter === 'pendente' && r.result_status !== null) return false
       if (statusFilter && statusFilter !== 'pendente' && r.result_status !== statusFilter) return false
       return true
     })
-  }, [rows, regional, statusFilter])
+  }, [rows, regional, area, statusFilter])
 
   if (loading) return <p className="text-sm text-slate-400">Carregando…</p>
   if (errorMsg) return <p className="text-sm text-red-600">Não foi possível carregar as metas: {errorMsg}</p>
@@ -69,19 +82,29 @@ export default function Metas() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Metas"
+        title="Metas e Apuração"
         actions={<span className="text-sm text-slate-400">{filtered.length} de {rows.length} metas</span>}
       />
 
       <div className="flex flex-wrap gap-2">
         <select
           value={regional ?? ''}
-          onChange={(e) => setRegional(e.target.value || null)}
+          onChange={(e) => handleRegionalChange(e.target.value || null)}
           className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white"
         >
           <option value="">Todas as regionais</option>
           {regionais.map((r) => (
             <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <select
+          value={area ?? ''}
+          onChange={(e) => setArea(e.target.value || null)}
+          className="text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white"
+        >
+          <option value="">Todas as áreas</option>
+          {areas.map((a) => (
+            <option key={a} value={a}>{a}</option>
           ))}
         </select>
         <select
