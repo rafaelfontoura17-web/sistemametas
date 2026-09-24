@@ -743,3 +743,20 @@ de edição.
     (`max-w-6xl`) — o painel antigo não tinha teto nenhum, ocupava a
     largura toda de forma fluida. Removido o `max-w` da tela de Detalhe
     da Área por completo.
+
+## Correção de um erro meu: "bug" que na verdade era funcionalidade
+
+60. **Item 58 estava errado.** O destaque em cascata das faixas (ex.:
+    atingimento 110% acende 80%, 90%, 100% E 110% juntas, não só a mais
+    alta) é comportamento **intencional**, herdado do painel-metas
+    original — não um bug. Eu identifiquei errado como bug ao ver todas
+    as 5 faixas acesas num caso de superação folgada, e troquei pra
+    destacar só a faixa exata — isso quebrou a funcionalidade de verdade.
+    Corrigido de volta: `isBandAchieved` agora destaca toda faixa cujo
+    percentual seja ≤ ao `attainment_percentage` real da meta (cascata),
+    usando direto o valor que o banco calculou — sem tentar recalcular
+    critério de faixa nenhum no navegador, o que é mais simples e evita
+    esse tipo de erro se repetir.
+    **Lição registrada**: antes de "corrigir" algo que parece estranho,
+    confirmar com o usuário se é bug ou comportamento esperado — nem
+    tudo que parece incomum à primeira vista é erro.
