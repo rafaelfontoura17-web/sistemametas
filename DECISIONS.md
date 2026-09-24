@@ -738,3 +738,8 @@ de edição.
     com `attainment_percentage`, que o banco já calculou como a faixa
     correta (mais alta satisfeita, sem interpolação) — elimina a lógica
     duplicada no frontend, que era a origem do bug.
+
+59. **Ajuste fino do item 57**: não bastava aumentar o teto de largura
+    (`max-w-6xl`) — o painel antigo não tinha teto nenhum, ocupava a
+    largura toda de forma fluida. Removido o `max-w` da tela de Detalhe
+    da Área por completo.

@@ -85,7 +85,7 @@ export default function AreaDetail() {
   const status = areaStatus(area)
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <PageHeader title={area.area_name} breadcrumb={<><Link to="/" className="hover:underline">Visão por área</Link> / {area.area_name}</>} />
 
       <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-5">
