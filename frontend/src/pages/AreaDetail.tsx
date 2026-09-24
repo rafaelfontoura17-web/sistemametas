@@ -85,7 +85,7 @@ export default function AreaDetail() {
   const status = areaStatus(area)
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-6xl">
       <PageHeader title={area.area_name} breadcrumb={<><Link to="/" className="hover:underline">Visão por área</Link> / {area.area_name}</>} />
 
       <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-5">
@@ -116,8 +116,8 @@ function GoalCard({ goal, areaName, ranges }: { goal: GoalRow; areaName: string;
   const status = goal.result_status ?? 'pendente'
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+      <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <Link to={`/metas/${goal.goal_id}`} className="font-semibold text-slate-800 hover:text-ambar-accent">
             {goal.indicator_name}
           </Link>
@@ -130,7 +130,7 @@ function GoalCard({ goal, areaName, ranges }: { goal: GoalRow; areaName: string;
           </div>
         </div>
 
-        <div className="shrink-0 text-right grid grid-cols-3 gap-4">
+        <div className="shrink-0 grid grid-cols-3 gap-4 text-left sm:text-right w-full sm:w-auto">
           <div>
             <p className="text-[10px] text-slate-400 uppercase">Real</p>
             <p className="text-sm font-bold text-ambar-accent">{formatReal(goal)}</p>
@@ -164,7 +164,7 @@ function GoalCard({ goal, areaName, ranges }: { goal: GoalRow; areaName: string;
       {ranges.length > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <p className="text-[10px] text-slate-400 uppercase mb-2">Métricas da meta {goal.unidade ? `(${goal.unidade})` : ''}</p>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {ranges.map((band) => {
               const achieved = isBandAchieved(goal, band)
               return (

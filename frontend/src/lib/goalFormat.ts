@@ -76,21 +76,17 @@ export function formatCriterio(direction: string, unidade: string | null, band: 
  * (fn_calc_attainment): a maior faixa cujo critério o Real satisfaz. Usada
  * só pra destacar visualmente qual faixa bateu, nunca pra recalcular nada
  * (o attainment_percentage que vem do banco é sempre a fonte de verdade). */
-export function isBandAchieved(goal: GoalLike, band: GoalRange): boolean {
-  if (goal.real_value == null) return false
-  switch (goal.direction) {
-    case 'maior_melhor':
-    case 'binario':
-      return goal.real_value >= band.target_value
-    case 'menor_melhor':
-    case 'cronologico':
-      return goal.real_value <= band.target_value
-    case 'percentual_por_mes':
-      return (
-        goal.real_value <= (band.target_month ?? Infinity) &&
-        (goal.real_value_pct ?? -Infinity) >= band.target_value
-      )
-    default:
-      return false
-  }
+/** A faixa que foi de fato atingida — usa o attainment_percentage que o
+ * motor de cálculo já gravou no banco (fonte única de verdade), em vez
+ * de reconferir banda por banda aqui. Reconferir cada banda de forma
+ * independente é o jeito errado de fazer isso: quando o Real supera
+ * folgadamente o critério de VÁRIAS faixas ao mesmo tempo (comum em
+ * metas "quanto antes/mais, melhor"), isso faria mais de uma faixa
+ * acender junto — só a mais alta deveria, que é exatamente o que o
+ * banco já decidiu ao calcular attainment_percentage. */
+export function isBandAchieved(
+  goal: { attainment_percentage: number | null },
+  band: GoalRange
+): boolean {
+  return goal.attainment_percentage != null && goal.attainment_percentage === band.attainment_percentage
 }

@@ -718,3 +718,23 @@ navegador ainda — recomendo testar principalmente: Usuário sem nenhuma
 área de edição tentando lançar (deve ser bloqueado com mensagem clara),
 aprovação em lote pela tela, e o formulário de "Novo usuário" com áreas
 de edição.
+
+## Bugs de ajuste fino corrigidos (pós-deploy)
+
+57. **Largura fixa nas telas de Detalhe da Área e Detalhe da Meta**
+    (`max-w-4xl`/`max-w-3xl`) sobrava muito espaço vazio em monitores
+    grandes — a página não se reorganizava conforme a resolução. Larguras
+    ajustadas (`max-w-6xl`/`max-w-4xl`) e o cabeçalho de cada card de meta
+    (nome + Real/Peso/Resultado) e a grade de faixas agora quebram linha
+    de forma responsiva (`flex-col sm:flex-row`, `grid-cols-2 sm:grid-cols-5`)
+    em vez de layout fixo.
+
+58. **Bug real na tabela de faixas: mais de uma faixa acendia em verde ao
+    mesmo tempo.** `isBandAchieved()` reconferia cada faixa de forma
+    independente no navegador — pra metas onde o Real supera folgadamente
+    o critério de várias faixas ao mesmo tempo (comum em metas "quanto
+    antes/mais, melhor", como cronológicas), isso destacava TODAS as
+    faixas satisfeitas, não só a mais alta. Corrigido comparando direto
+    com `attainment_percentage`, que o banco já calculou como a faixa
+    correta (mais alta satisfeita, sem interpolação) — elimina a lógica
+    duplicada no frontend, que era a origem do bug.

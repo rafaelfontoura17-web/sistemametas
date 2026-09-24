@@ -66,7 +66,7 @@ export default function GoalDetail() {
   const status: GoalStatus = goal.result_status ?? 'pendente'
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       <div>
         <Link to="/metas" className="text-xs text-slate-400 hover:text-slate-600">← Voltar para Metas e Apuração</Link>
         <div className="flex items-start justify-between gap-3 mt-1">
