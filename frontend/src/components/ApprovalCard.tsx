@@ -34,6 +34,12 @@ const TIPO_LABEL: Record<string, string> = {
   reabertura: 'Reabertura de Área',
 }
 
+const STATUS_BADGE: Record<ApprovalDetail['status'], { label: string; className: string }> = {
+  pendente: { label: 'Pendente', className: 'bg-blue-100 text-blue-700' },
+  aprovada: { label: 'Aprovada', className: 'bg-emerald-100 text-emerald-700' },
+  reprovada: { label: 'Reprovada', className: 'bg-red-100 text-red-700' },
+}
+
 function pessoa(nome: string | null, cargo: string | null) {
   if (!nome) return '—'
   return cargo ? `${nome} — ${cargo}` : nome
@@ -64,6 +70,9 @@ export default function ApprovalCard({
             <p className="text-xs text-slate-500 mt-1">"{req.justification}"</p>
           )}
         </div>
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_BADGE[req.status].className}`}>
+          {STATUS_BADGE[req.status].label}
+        </span>
       </div>
 
       {req.status === 'aprovada' && req.approver_name && (
