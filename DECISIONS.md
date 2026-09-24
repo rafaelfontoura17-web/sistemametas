@@ -760,3 +760,20 @@ de edição.
     **Lição registrada**: antes de "corrigir" algo que parece estranho,
     confirmar com o usuário se é bug ou comportamento esperado — nem
     tudo que parece incomum à primeira vista é erro.
+
+## Bugs de dados e de tela (pós-deploy, ajustes pontuais)
+
+61. **Meta "Mapeamento dos itens sem Movimentação" (Supervisão AC)**: a
+    planilha original trazia essa meta com faixas em `Qtde` (0,1,2,3,4)
+    quando na verdade é uma meta de **percentual de itens mapeados**
+    (80%,85%,90%,95%,100%) — erro de digitação na fonte, corrigido pelo
+    usuário na planilha e replicado direto no banco (só essa meta usa
+    esse indicador, não afeta mais nenhuma outra). Testado: mapear 90%
+    → 100% de atingimento; mapear 60% → 0% (abaixo do mínimo).
+
+62. **`ApprovalCard` nunca mostrava nada para status "pendente"** — só
+    tinha blocos condicionais pra "aprovada" e "reprovada", então uma
+    solicitação recém-criada aparecia sem nenhum indicador de status na
+    tela de Solicitações. Corrigido com um selo sempre visível
+    (Pendente/Aprovada/Reprovada) no cabeçalho do card, além dos blocos
+    de detalhe que já existiam pra aprovada/reprovada.
