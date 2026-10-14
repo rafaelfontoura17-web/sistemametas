@@ -1,102 +1,82 @@
-# One Page Executivo — Gestão Administrativa
+# Sistema de Gestão de Metas — Âmbar Energia
 
-Sistema de acompanhamento dos indicadores administrativos da Âmbar Energia
-(ADM-001 a ADM-026).
+Sistema de gestão de metas por Área/Regional, com apuração, workflow de
+aprovação (com hierarquia de Gestor por escopo) e RLS de ponta a ponta no
+Postgres do Supabase.
 
-Esta é a versão publicável do protótipo aprovado: **as telas são o mesmo
-código já validado**, sem reescrita. O que mudou é onde os dados moram —
-antes num banco interno da plataforma onde o protótipo rodava, agora num
-banco PostgreSQL de verdade (Supabase), com login por pessoa e histórico
-compartilhado por toda a equipe.
+## Estrutura do repositório
 
-## Como publicar
+```
+supabase/migrations/   11 migrations SQL, na ordem (0001 a 0011 + hardening)
+scripts/                import_planilha.py, provision_users.py
+frontend/               React + TypeScript + Vite + Tailwind + Supabase JS
+DECISIONS.md            registro de todas as decisões técnicas e de negócio tomadas
+```
 
-É um site estático: não tem build, não tem dependência para instalar.
+## Projeto Supabase já provisionado
 
-1. No repositório do GitHub, **apague tudo o que está lá** e suba todos os
-   arquivos desta pasta na raiz (não dentro de uma subpasta).
-2. Na Vercel, importe o repositório e publique.
-3. Pronto. A URL do projeto já abre o sistema.
+Projeto **sistema-metas-ambar** (`sa-east-1`), com:
+- Schema completo (regionais, áreas, indicadores, metas, faixas, resultados,
+  aprovação, auditoria, notificações) — RLS habilitada em tudo.
+- Motor de cálculo com 5 direções: `maior_melhor`, `menor_melhor`, `binario`,
+  `cronologico`, `percentual_por_mes`.
+- Workflow de aprovação com hierarquia por escopo (Gestor de Regional
+  inteira > Gestor de Área específica; Administrador sempre aprova).
+- **Dados reais carregados**: 169 metas, 665 faixas, 85 resultados, 31 áreas,
+  3 regionais, 44 indicadores — todas as áreas fechando em 100% de peso.
+- Hardening de segurança aplicado (função `search_path` fixo, `EXECUTE`
+  revogado de `anon`/funções internas — ver DECISIONS.md migration 11/12).
 
-O arquivo `vercel.json` incluído aqui já diz à Vercel que não existe nada
-para compilar, e essa instrução tem prioridade sobre o que estiver
-configurado no painel. Ou seja: mesmo reaproveitando o projeto que rodava a
-versão anterior em Next.js, não é preciso mexer nas configurações de build.
+Se precisar recriar isso do zero em outro projeto Supabase, aplique as
+migrations em `supabase/migrations/` nessa ordem exata (via Dashboard SQL
+Editor, `supabase db push`, ou uma a uma).
 
-A única exceção é o campo **Root Directory** (em *Settings → General*), que
-não pode ser definido por arquivo. Se ele estiver apontando para alguma
-subpasta — `onepage-app`, por exemplo — precisa ser esvaziado, porque agora
-os arquivos ficam na raiz do repositório. Se estiver vazio, não há nada a
-fazer.
+## Rodando o frontend localmente
 
-## Como cada pessoa entra
+```bash
+cd frontend
+npm install
+cp .env.example .env.local   # já vem preenchido neste pacote com os dados do projeto real
+npm run dev
+```
 
-Quem já está cadastrado em **Responsáveis** cria a própria senha na aba
-"Primeiro acesso" da tela de login, usando o e-mail que está no cadastro.
-Quem não está cadastrado não consegue criar acesso — é assim de propósito.
+## Deploy no Vercel
 
-Para incluir alguém novo: entre no sistema, vá em **Responsáveis → + Novo
-responsável**, cadastre nome e e-mail, e peça para a pessoa fazer o primeiro
-acesso.
+1. Suba este repositório no GitHub.
+2. No Vercel: **New Project** → importe o repositório.
+3. **Root Directory**: `frontend` (o projeto React fica dentro dessa pasta,
+   não na raiz do repo).
+4. Framework preset: **Vite** (o Vercel detecta automaticamente).
+5. Em **Environment Variables**, adicione:
+   - `VITE_SUPABASE_URL` = `https://vrhifxqovglqytdwjlhn.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = (a mesma chave que está em `frontend/.env.local`)
+6. Deploy.
 
-O login por e-mail e senha é provisório e foi montado para ser trocado pelo
-login corporativo da Microsoft (Entra ID) **sem recadastro**: a identidade de
-cada pessoa é a linha dela na tabela de usuários, que não muda. Quando o TI
-liberar as credenciais, só a tela de login e o arquivo `auth.js` mudam.
+O `frontend/vercel.json` já está configurado para redirecionar todas as
+rotas para `index.html` (necessário porque é uma SPA com React Router —
+sem isso, dar F5 em `/metas/123` daria 404).
 
-## Os arquivos
+## Criar o usuário administrador
 
-Vindos do protótipo, sem alteração de estrutura, cores ou textos:
+A criação de contas de login **não é feita pela tela nem pelo navegador**
+(a Admin API do Supabase exige a `service_role key`, que nunca pode ir
+para o frontend). Duas formas:
 
-| Arquivo | O que é |
-| --- | --- |
-| `app.css` | Toda a aparência do sistema. Idêntico ao protótipo, byte a byte. |
-| `engines.js` | Os motores de cálculo dos indicadores. O do protótipo, com um motor novo acrescentado ao final da lista (o de conformidade por status, usado pelo ADM-005) — nenhum motor existente foi alterado. |
-| `app.js` | Todas as telas. Idêntico ao protótipo, com duas exceções descritas abaixo. |
-| `logo.png` | Marca Âmbar Energia. |
+1. **Painel do Supabase**: Authentication → Add user (cria só o login).
+   Depois é preciso vincular perfil Administrador manualmente no banco
+   (`users` + `user_roles`) — peça ajuda ou rode o SQL equivalente ao que
+   `provision_users.py` faz.
+2. **Script** (`scripts/provision_users.py`): cria o login **e** já
+   vincula perfil/escopo, a partir de um CSV. Requer
+   `SUPABASE_SERVICE_ROLE_KEY` (nunca rode isso no navegador).
 
-Criados para esta versão:
+## Carga inicial de dados (se for repetir em outro ambiente)
 
-| Arquivo | O que é |
-| --- | --- |
-| `db.js` | Conversa com o banco PostgreSQL. Tem exatamente as mesmas funções que a versão antiga — é o que permite o `app.js` continuar intacto. |
-| `auth.js` | Tela de login, sessão e avisos de erro. |
-| `auth.css` | Estilo só da tela de login (o `app.css` não foi tocado). |
-| `config.js` | Endereço e chave pública do banco. |
-| `index.html` | Página que junta tudo. |
-| `supabase.js` | Biblioteca do Supabase, guardada aqui no repositório em vez de vir de um CDN — assim o sistema abre mesmo em rede corporativa restrita. |
+```bash
+export DATABASE_URL="postgresql://..."
+python3 scripts/import_planilha.py "planilha.xlsx" --commit
+```
 
-### O que mudou no `app.js`
-
-Duas coisas, ambas por causa do login de verdade:
-
-1. Quem está logado passa a vir da sessão autenticada, em vez do seletor
-   "Você é [nome]" que existia para simular usuários na validação.
-2. Esse seletor deu lugar ao nome da pessoa logada e ao botão **Sair**.
-
-E uma correção de bug que valia para os dois mundos: os campos numéricos
-aceitavam a vírgula do teclado brasileiro só na aparência — quem digitava
-`86,5` gravava **865**, sem aviso nenhum. Agora a vírgula é aceita e
-convertida corretamente, tanto na digitação quanto na importação em lote.
-
-## Onde os dados ficam
-
-No Supabase (projeto `onepage-executivo-ambar`), nas tabelas `areas`,
-`categorias`, `usuarios`, `indicadores`, `registros_indicador` e
-`historico_alteracoes`.
-
-Duas regras do protótipo continuam valendo, agora garantidas pelo próprio
-banco:
-
-- **Resultado e status nunca são armazenados.** São sempre recalculados a
-  partir dos dados de entrada na hora da leitura. É isso que faz uma
-  correção de mês passado reprocessar tudo automaticamente.
-- **O catálogo de indicadores é fechado** em ADM-001..ADM-026. O banco
-  recusa qualquer indicador fora dessa faixa e qualquer tentativa de passar
-  de 26. Incluir um novo indicador é um ato deliberado, feito no banco.
-
-A chave que está no `config.js` é a chave **pública** do projeto — ela é
-feita para ficar visível no navegador e sozinha não dá acesso a nada: quem
-protege os dados são as regras de acesso do banco, que só respondem para
-quem está autenticado. Pode ficar no GitHub. A chave secreta do projeto
-nunca deve ser colocada aqui.
+Veja `DECISIONS.md` para o histórico completo de decisões técnicas e de
+negócio tomadas ao longo do projeto — vale ler antes de mexer em regras
+de cálculo ou de aprovação.
