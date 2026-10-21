@@ -18,6 +18,7 @@ const DIRECOES = [
   { value: 'binario', label: 'Binário (sim/não)' },
   { value: 'cronologico', label: 'Cronológico (por mês)' },
   { value: 'percentual_por_mes', label: 'Percentual + mês (composta)' },
+  { value: 'escala_letra', label: 'Escala de letras (A–E)' },
 ]
 
 export default function Indicadores() {

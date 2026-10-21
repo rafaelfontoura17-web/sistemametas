@@ -3,6 +3,9 @@ export const MESES = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ]
 
+/** Escala de letras (direção 'escala_letra'): guardada como 1..5, exibida A..E. */
+export const LETRAS = ['', 'A', 'B', 'C', 'D', 'E']
+
 export interface GoalRange {
   attainment_percentage: number
   target_value: number
@@ -35,6 +38,7 @@ export function formatApprovalValue(
   if (real == null && pct == null) return '—'
   if (direction === 'binario') return real === '1' ? 'Sim' : 'Não'
   if (direction === 'cronologico') return MESES[Number(real)] ?? '—'
+  if (direction === 'escala_letra') return LETRAS[Number(real)] ?? '—'
   if (direction === 'percentual_por_mes') {
     return `${pct != null ? (Number(pct) * 100).toFixed(0) : '?'}% em ${MESES[Number(real)] ?? '?'}`
   }
@@ -46,6 +50,7 @@ export function formatReal(goal: GoalLike): string {
   if (goal.real_value == null && goal.real_value_pct == null) return '—'
   if (goal.direction === 'binario') return goal.real_value === 1 ? 'Sim' : 'Não'
   if (goal.direction === 'cronologico') return MESES[goal.real_value ?? 0]
+  if (goal.direction === 'escala_letra') return LETRAS[goal.real_value ?? 0] ?? '—'
   if (goal.direction === 'percentual_por_mes') {
     return `${((goal.real_value_pct ?? 0) * 100).toFixed(0)}% em ${MESES[goal.real_value ?? 0]}`
   }
@@ -65,6 +70,8 @@ export function formatCriterio(direction: string, unidade: string | null, band: 
       return 'Concluído'
     case 'cronologico':
       return `até ${MESES[band.target_value]}`
+    case 'escala_letra':
+      return `Letra ${LETRAS[band.target_value] ?? '?'}`
     case 'percentual_por_mes':
       return `${(band.target_value * 100).toFixed(0)}% até ${MESES[band.target_month ?? 0]}`
     default:

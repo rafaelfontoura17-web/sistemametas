@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { STATUS_STYLES, type GoalStatus } from '../lib/statusColors'
-import { MESES, formatReal, formatCriterio, type GoalRange } from '../lib/goalFormat'
+import { MESES, LETRAS, formatReal, formatCriterio, type GoalRange } from '../lib/goalFormat'
 
 interface GoalDetail {
   goal_id: string
@@ -181,6 +181,7 @@ function SubmitResultForm({
   const [percentual, setPercentual] = useState('')
   const [mes, setMes] = useState('')
   const [binario, setBinario] = useState<'sim' | 'nao' | ''>('')
+  const [letra, setLetra] = useState('')
   const [justificativa, setJustificativa] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -196,6 +197,9 @@ function SubmitResultForm({
     if (goal.direction === 'binario') {
       if (!binario) { setError('Selecione Sim ou Não.'); return }
       real_value = binario === 'sim' ? 1 : 0
+    } else if (goal.direction === 'escala_letra') {
+      if (!letra) { setError('Selecione a letra alcançada.'); return }
+      real_value = Number(letra)
     } else if (goal.direction === 'cronologico') {
       if (!mes) { setError('Selecione o mês.'); return }
       real_value = Number(mes)
@@ -233,6 +237,19 @@ function SubmitResultForm({
               className={`px-4 py-2 rounded-lg text-sm border ${binario === opt ? 'bg-ambar-accent text-white border-ambar-accent' : 'border-slate-300 text-slate-600'}`}
             >
               {opt === 'sim' ? 'Concluído' : 'Não concluído'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {goal.direction === 'escala_letra' && (
+        <div className="flex gap-2">
+          {LETRAS.slice(1).map((l, i) => (
+            <button
+              type="button" key={l} onClick={() => setLetra(String(i + 1))}
+              className={`w-11 py-2 rounded-lg text-sm font-semibold border ${letra === String(i + 1) ? 'bg-ambar-accent text-white border-ambar-accent' : 'border-slate-300 text-slate-600'}`}
+            >
+              {l}
             </button>
           ))}
         </div>

@@ -777,3 +777,50 @@ de edição.
     tela de Solicitações. Corrigido com um selo sempre visível
     (Pendente/Aprovada/Reprovada) no cabeçalho do card, além dos blocos
     de detalhe que já existiam pra aprovada/reprovada.
+
+## Gerência Executiva Administrativa (regional "Brasil") — migration 0018
+
+Pedido do Gerente (Rafael Augusto Stedler, chefe dos 3 coordenadores
+regionais) para ter as próprias metas no painel. Decidido em conversa,
+ponto a ponto, antes da execução.
+
+63. **Regional "Brasil"** (`code = BRASIL`) e área **"Gerência Executiva
+    Administrativa"**, vinculada a ela. O Gerente é Regional Brasil; os
+    coordenadores são as regionais divididas. Brasil **não** vira 4ª coluna
+    nem chip de filtro no Dashboard.
+64. **Nova categoria `gerencia`** em `v_area_results` (nome começando com
+    "Gerência"), mesmo critério de prefixo das outras categorias (item 22).
+    View recriada com `security_invoker = true` mantido; mesmas colunas.
+65. **Dashboard — variação A2**: fundo "Brasil" (tom claro do cinza-chumbo)
+    abraçando as 3 colunas, com o card da Gerência centralizado no topo, do
+    mesmo tamanho dos outros cards. As colunas mantêm as cores atuais. A
+    faixa **continua visível com filtro de uma regional** (decisão do
+    usuário). Quem não tem acesso à regional Brasil (ex.: Usuário da Norte)
+    não vê nada diferente — a RLS resolve sozinha; testado com a Ligia.
+66. **Nova direção `escala_letra`**: resultado lançado como letra A–E,
+    guardado como 1–5, comparação igual a `maior_melhor` (A=80%, B=90%,
+    C=100%, D=110%, E=120%; escala progressiva — E pressupõe A..D). Tela de
+    apuração tem seletor A–E; faixas mostram "Letra X". Usada na meta
+    "Desmobilização e Monetização de Itens Obsoletos".
+67. **Metas da Gerência cadastradas exatamente como na planilha** (textos,
+    pesos 30/20/20/15/10/5 e faixas). Duas aparentes contradições
+    confirmadas como intencionais: "Implantar 5 projetos" usa faixas 2–6
+    (lista fechada de 6 projetos, inclui Almoxarifado; só projetos da lista
+    contam); "Melhoria contínua" fala em "no mínimo 4" mas faixas 1–5 — foi
+    assim que subiu no sistema da empresa e o painel precisa refletir isso.
+    Indicadores próprios (não reaproveita os das Coordenações, cujos textos
+    diferem); Treinamento de Compliance reaproveita o indicador binário
+    compartilhado.
+68. **Aprovação**: o Gerente é Administrador — lança e auto-aprova, sem
+    mudança no fluxo.
+69. **Adiado**: cálculo automático da meta "Garantir entrega das Metas das
+    áreas". Exige uma árvore "quem responde a quem" que o sistema não tem
+    (ex.: Controles ADM responde direto à Coordenação Norte, não à
+    Supervisão). Por ora é lançada manualmente.
+
+Testado: migration inteira simulada em produção com ROLLBACK, logado como o
+Gerente — 5 projetos→110%, 93%→80%, 3 iniciativas→100%, 100%→120%,
+letra B→90%, Compliance→100%; área = 101%, peso 100%. Após aplicar: 175
+metas (169+6), 32 áreas, todas com peso 100%; Usuário da Norte continua
+vendo só a Norte. Frontend: `tsc -b` e build limpos; Dashboard conferido
+em print (admin sem filtro, admin filtrando Norte, Usuário da Norte).

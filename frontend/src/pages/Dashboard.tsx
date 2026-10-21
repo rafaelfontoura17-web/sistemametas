@@ -8,7 +8,7 @@ import { areaStatus, STATUS_SHORT_LABEL, STATUS_STYLES } from '../lib/statusColo
 interface AreaResult {
   area_id: string
   area_name: string
-  category: 'coordenacao' | 'supervisao' | 'outras'
+  category: 'gerencia' | 'coordenacao' | 'supervisao' | 'outras'
   regional_id: string
   regional_name: string
   cycle_id: string
@@ -29,7 +29,33 @@ const CATEGORY_STYLE = {
   coordenacao: { label: 'Coordenação', bg: 'bg-[#eef0fb]', border: 'border-[#dde1f7]' },
   supervisao: { label: 'Supervisão', bg: 'bg-[#fdf3ea]', border: 'border-[#f8e6d3]' },
   outras: { label: 'Demais áreas', bg: 'bg-[#eef4ee]', border: 'border-[#dfeadf]' },
+  gerencia: { label: 'Gerência', bg: 'bg-white', border: 'border-[#ffd2ad]' },
 } as const
+
+type Categoria = keyof typeof CATEGORY_STYLE
+
+function AreaCard({ a, cat, onOpen }: { a: AreaResult; cat: Categoria; onOpen: () => void }) {
+  const status = areaStatus(a)
+  const style = CATEGORY_STYLE[cat]
+  return (
+    <button
+      onClick={onOpen}
+      style={{ flex: '1 1 260px', maxWidth: '340px' }}
+      className={`text-left rounded-lg border p-3 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow ${style.bg} ${style.border}`}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-800 truncate">{a.area_name}</p>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {a.metas_apuradas}/{a.total_metas} metas apuradas
+        </p>
+        <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded-full mt-1.5 ${STATUS_STYLES[status].badgeClassName}`}>
+          {STATUS_SHORT_LABEL[status]}
+        </span>
+      </div>
+      <ProgressRing percent={a.resultado_ponderado} status={status} />
+    </button>
+  )
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -54,22 +80,61 @@ export default function Dashboard() {
     }
   }, [])
 
+  // Gerência (regional "Brasil") fica acima das 3 regionais, nunca vira coluna
+  // nem chip de filtro. Só aparece pra quem tem acesso a ela (RLS).
+  const gerencia = useMemo(() => rows.filter((r) => r.category === 'gerencia'), [rows])
+  const areaRows = useMemo(() => rows.filter((r) => r.category !== 'gerencia'), [rows])
+
   const regionais = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.regional_name))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    [rows]
+    () => Array.from(new Set(areaRows.map((r) => r.regional_name))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [areaRows]
   )
 
   const regionaisVisiveis = regional ? [regional] : regionais
 
   const kpis = useMemo(() => {
-    const filtered = regional ? rows.filter((r) => r.regional_name === regional) : rows
+    const filtered = regional ? areaRows.filter((r) => r.regional_name === regional) : rows
     const acc = { totalMetas: 0, apuradas: 0 }
     for (const r of filtered) {
       acc.totalMetas += r.total_metas
       acc.apuradas += r.metas_apuradas
     }
     return acc
-  }, [rows, regional])
+  }, [rows, areaRows, regional])
+
+  const regionaisGrid = (
+    <div className={`grid gap-5 items-start ${regionaisVisiveis.length === 1 ? 'grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
+      {regionaisVisiveis.map((regionalName) => {
+        const areasDaRegional = areaRows.filter((r) => r.regional_name === regionalName)
+        return (
+          <div key={regionalName} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-800">{regionalName}</h2>
+            </div>
+            <div className="p-4 space-y-5">
+              {(['coordenacao', 'supervisao', 'outras'] as const).map((cat) => {
+                const areas = areasDaRegional.filter((a) => a.category === cat)
+                if (areas.length === 0) return null
+                const style = CATEGORY_STYLE[cat]
+                return (
+                  <div key={cat}>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                      {style.label}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {areas.map((a) => (
+                        <AreaCard key={a.area_id} a={a} cat={cat} onOpen={() => navigate(`/areas/${a.area_id}`)} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 
   if (loading) return <p className="text-sm text-slate-400">Carregando…</p>
   if (errorMsg) return <p className="text-sm text-red-600">Não foi possível carregar o dashboard: {errorMsg}</p>
@@ -103,56 +168,23 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className={`grid gap-5 items-start ${regionaisVisiveis.length === 1 ? 'grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
-        {regionaisVisiveis.map((regionalName) => {
-          const areasDaRegional = rows.filter((r) => r.regional_name === regionalName)
-          return (
-            <div key={regionalName} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100">
-                <h2 className="font-semibold text-slate-800">{regionalName}</h2>
-              </div>
-              <div className="p-4 space-y-5">
-                {(['coordenacao', 'supervisao', 'outras'] as const).map((cat) => {
-                  const areas = areasDaRegional.filter((a) => a.category === cat)
-                  if (areas.length === 0) return null
-                  const style = CATEGORY_STYLE[cat]
-                  return (
-                    <div key={cat}>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                        {style.label}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {areas.map((a) => {
-                          const status = areaStatus(a)
-                          return (
-                            <button
-                              key={a.area_id}
-                              onClick={() => navigate(`/areas/${a.area_id}`)}
-                              style={{ flex: '1 1 260px', maxWidth: '340px' }}
-                              className={`text-left rounded-lg border p-3 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow ${style.bg} ${style.border}`}
-                            >
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-800 truncate">{a.area_name}</p>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  {a.metas_apuradas}/{a.total_metas} metas apuradas
-                                </p>
-                                <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded-full mt-1.5 ${STATUS_STYLES[status].badgeClassName}`}>
-                                  {STATUS_SHORT_LABEL[status]}
-                                </span>
-                              </div>
-                              <ProgressRing percent={a.resultado_ponderado} status={status} />
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+      {gerencia.length > 0 ? (
+        <div className="rounded-2xl border border-[#dfe3e3] bg-[#eef1f1] p-4 md:p-5 space-y-5">
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[11px] font-semibold text-ambar-dark/60 uppercase tracking-wide">
+              Brasil · Gerência Executiva
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 w-full">
+              {gerencia.map((a) => (
+                <AreaCard key={a.area_id} a={a} cat="gerencia" onOpen={() => navigate(`/areas/${a.area_id}`)} />
+              ))}
             </div>
-          )
-        })}
-      </div>
+          </div>
+          {regionaisGrid}
+        </div>
+      ) : (
+        regionaisGrid
+      )}
     </div>
   )
 }
