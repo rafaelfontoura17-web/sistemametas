@@ -824,3 +824,33 @@ letra B→90%, Compliance→100%; área = 101%, peso 100%. Após aplicar: 175
 metas (169+6), 32 áreas, todas com peso 100%; Usuário da Norte continua
 vendo só a Norte. Frontend: `tsc -b` e build limpos; Dashboard conferido
 em print (admin sem filtro, admin filtrando Norte, Usuário da Norte).
+
+## Transferência de Área entre Regionais — migration 0019
+
+Mudança de estrutura: Supervisão Santa Cruz e Faturamento Santa Cruz passaram
+da Regional Centro-Sul para a Regional Rio (coordenador do Rio).
+
+70. **Bug da tela "Áreas e Regionais"**: o "Vincular" só inseria uma linha em
+    `area_regionals`, deixando a área em DUAS regionais ao mesmo tempo (as
+    metas continuavam na antiga e a nova aparecia como uma área vazia). Não
+    havia nenhuma área legítima em mais de uma regional.
+71. **Regra: cada Área pertence a uma única Regional.** A tela passou a ter
+    "Transferir" (Área + Nova Regional, com confirmação), usando a RPC
+    `transfer_area_regional()` (security definer, só Admin, atômica): ativa o
+    vínculo novo, move `goals.regional_id` (resultados vão junto, por
+    `goal_id`), `area_closures` e `approval_requests`, desativa o vínculo
+    antigo e grava em `audit_logs` (`transferir_area_regional`). Área ainda
+    sem vínculo: a mesma operação só cria o vínculo.
+72. **Histórico de solicitações acompanha a área** (opção A, decisão do
+    usuário) — aparecem no filtro da nova Regional em Aprovações/Solicitações.
+73. **Bloqueio de segurança**: se algum usuário tiver escopo específico na
+    área (`user_access` com `area_id` ou `user_edit_access`), a transferência
+    é recusada com a lista de nomes, para o Admin revisar esses usuários
+    antes (escopos dependem da regional). Visibilidade por Regional inteira
+    se ajusta sozinha.
+
+Testado em produção com ROLLBACK (não-admin bloqueado; metas/solicitações
+movidas; resultados idênticos). Aplicado: Supervisão Santa Cruz (6 metas,
+4 solicitações, 54%) e Faturamento Santa Cruz (5 metas, 1 solicitação, 94%)
+agora no Rio, peso 100%; nenhuma área em mais de uma regional.
+Frontend: `tsc -b` e build limpos.
