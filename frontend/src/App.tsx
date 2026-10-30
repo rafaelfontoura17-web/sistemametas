@@ -16,6 +16,7 @@ import AreasRegionais from './pages/AreasRegionais'
 import Indicadores from './pages/Indicadores'
 import Auditoria from './pages/Auditoria'
 import Relatorios from './pages/Relatorios'
+import Backup from './pages/Backup'
 
 function page(el: JSX.Element) {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/indicadores" element={page(<Indicadores />)} />
           <Route path="/auditoria" element={page(<Auditoria />)} />
           <Route path="/relatorios" element={page(<Relatorios />)} />
+          <Route path="/backup" element={page(<Backup />)} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

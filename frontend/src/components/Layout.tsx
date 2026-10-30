@@ -19,6 +19,7 @@ const NAV_ITEMS_ADMIN = [
   { to: '/indicadores', label: 'Indicadores' },
   { to: '/relatorios', label: 'Relatórios' },
   { to: '/auditoria', label: 'Auditoria' },
+  { to: '/backup', label: 'Backup' },
 ]
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
