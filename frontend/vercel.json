@@ -1,5 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "redirects": [
+    { "source": "/redefinir-senha", "destination": "https://hubadm.vercel.app/redefinir-senha", "permanent": false },
+    { "source": "/(.*)", "destination": "https://hubadm.vercel.app/pdm", "permanent": false }
   ]
 }
